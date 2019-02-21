@@ -1,9 +1,8 @@
-
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from scipy.stats import kurtosis
 
 ### Load all files
 print("Loading total_acc files...")
@@ -81,7 +80,36 @@ print()
 print("Datapoints expected : 64 * %d = %d" % (len(dataset.index), 64 * len(dataset.index)))
 print("Datapoints in raw signal         = %d" % raw_signal.size)
 
-# ### Add the labels to the dataset
-# dataset['label'] = labelset['label']
+### Add the labels to the dataset. Not sure why at this point, but the exercise says so
+dataset['label'] = labelset['label']
 
-# print(dataset[:10])
+
+
+############# 4.5 #############
+### a
+print()
+print("Time domain features")
+print("     Range: [%0.4f, %0.4f]" % (raw_signal.min(), raw_signal.max()))
+print("      Mean: %0.4f" % raw_signal.mean())
+print("    stddev: %0.4f" % raw_signal.std())
+print("  kurtosis: %0.4f" % kurtosis(raw_signal))
+
+### b
+def toSignal(df): return df.iloc[:, :64].values.flatten() # Function to strip label from dataframe, and concatenate rows into raw signal
+
+byLabel = dataset.groupby('label') # Group samples by class
+groupActivities = byLabel.groups.keys() # All keys of the groups
+activityToSignal = { activity : toSignal(byLabel.get_group(activity)) for activity in groupActivities } # For each group, get the raw signal
+
+### For each activity, get the raw signal and calculate time domain features
+rangePerActivity    = { activity : [signal.min(), signal.max()] for activity, signal in activityToSignal.items()}
+meanPerActivity     = { activity : signal.mean()                for activity, signal in activityToSignal.items()}
+stddevPerActivity   = { activity : signal.std()                 for activity, signal in activityToSignal.items()}
+kurtosisPerActivity = { activity : kurtosis(signal)             for activity, signal in activityToSignal.items()}
+
+print()
+print("        ", " ".join([activity.ljust(20) for activity in groupActivities]) )
+print("   range", " ".join([("[%0.4f, %0.4f]" % (val[0], val[1])).ljust(20) for _, val in rangePerActivity.items()]))
+print("    mean", " ".join([("%0.4f" % val).ljust(20)                       for _, val in meanPerActivity.items()]))
+print("  stddev", " ".join([("%0.4f" % val).ljust(20)                       for _, val in stddevPerActivity.items()]))
+print("kurtosis", " ".join([("%0.4f" % val).ljust(20)                       for _, val in kurtosisPerActivity.items()]))
