@@ -46,9 +46,20 @@ bar_heights = Y[0].value_counts(normalize=True).sort_index()
 plt.bar(bar_heights.index.values, bar_heights, tick_label=activity_labels['activity'])
 # plt.show()
 
-### 4.3
+### 4.3 (Emiel work)
 feature = 100
 plt.clf() 
 X_train.groupby('label')[feature].plot.kde()
 plt.title(features[features['id'] == 555]['feature'].tolist()[0])
 plt.show()
+
+### 4.3
+count=50
+X_label = X.groupby('label')
+while count<501:
+    plt.clf() 
+    X_label[count].plot.kde()
+    plt.title(features[features['id'] == count]['feature'].tolist()[0])
+    count += 50
+    plt.show()
+    
