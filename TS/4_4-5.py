@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import scipy.fftpack
 from scipy.stats import kurtosis
 
 ### Load all files
@@ -113,3 +114,71 @@ print("   range", " ".join([("[%0.4f, %0.4f]" % (val[0], val[1])).ljust(20) for 
 print("    mean", " ".join([("%0.4f" % val).ljust(20)                       for _, val in meanPerActivity.items()]))
 print("  stddev", " ".join([("%0.4f" % val).ljust(20)                       for _, val in stddevPerActivity.items()]))
 print("kurtosis", " ".join([("%0.4f" % val).ljust(20)                       for _, val in kurtosisPerActivity.items()]))
+
+
+
+### 4.6
+
+# ##### Testing Example #####
+# print("\nRunning Fast Fourier Transform..")
+
+# T = 1.0 / 80.0		# Samples per periods. Max frequency that can be recognized : 0.5 / T
+# D = 4				# Total number of periods
+# N = int(D / T) 		# Total number of samples
+
+# print("       Duration : %0.4fs" % D)
+# print("  Sample window : %0.4fs" % T)
+# print("        Samples : %d" % N)
+# print("   Hz detection : <= %0.2f Hz" % (0.5 / T))
+# print("    Hz interval : %0.4fs" % ((0.5 / T) / (N // 2 - 1)))
+
+# # Generate the x-coordinates for which to calculate the signal
+# x = np.linspace(0, D, N) * 2 * np.pi
+# # Calculate the signal
+# y = 1 * np.sin(x) + 0.8 * np.sin(4 * x) + 0.5 * np.sin(6 * x)
+
+# # Calculate the intensity and phase of sinusoids present in the signal
+# yf = scipy.fftpack.fft(y)
+# # Generate the x-axis to match the frequencies to the intensities
+# xf = np.linspace(0.0, 0.5 / T, N // 2)
+
+# plt.clf()
+# plt.subplot(1, 2, 1)
+# plt.plot(y)
+# plt.subplot(1, 2, 2)
+# plt.plot(xf, 2.0 / N * np.abs(yf[0:(N//2)]))
+# plt.grid()
+# plt.show()
+# ##### End of Example #####
+
+plt.clf()
+samples = 500 # 10 seconds
+offset = 100  # 2 seconds
+sample_interval = 2.56 / 128 # 2.56s/window and 128 samples/window gives an interval of 0.020s/sample
+iPlot = 1
+for activity, signal in activityToSignal.items():
+	# Grab the signal # Add offset to remove the apparent noise at the beginning of some signals
+	y = signal[offset:offset + samples]
+	# Generate the x-values corresponding to the signal
+	x = np.linspace(offset * sample_interval, (offset + samples) * sample_interval, samples)
+
+	yf = scipy.fftpack.fft(y)
+	xf = np.linspace(0.0, 0.5 / sample_interval, samples // 2)
+
+	# Plot the signal
+	plt.subplot(6, 2, iPlot)
+	plt.plot(x, y, label=activity)
+	plt.ylim(-1, 1)
+	plt.legend()
+	iPlot += 1
+
+	# Plot the Fourier transform of the signal
+	plt.subplot(6, 2, iPlot)
+	plt.plot(xf, 2.0 / samples * np.abs(yf[0:(samples//2)]), label=activity + "(FFT)")
+	plt.ylim(0, 0.3)
+	plt.legend()
+	iPlot += 1
+
+plt.show()
+
+
