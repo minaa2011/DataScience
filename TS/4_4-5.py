@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import scipy.fftpack
+from scipy import signal
 from scipy.stats import kurtosis
 
 ### Load all files
@@ -152,7 +153,7 @@ print("kurtosis", " ".join([("%0.4f" % val).ljust(20)                       for 
 # ##### End of Example #####
 
 plt.clf()
-samples = 500 # 10 seconds
+samples = 1000 # 2	0 seconds, 50 samples per second
 offset = 100  # 2 seconds
 sample_interval = 2.56 / 128 # 2.56s/window and 128 samples/window gives an interval of 0.020s/sample
 iPlot = 1
@@ -180,5 +181,27 @@ for activity, signal in activityToSignal.items():
 	iPlot += 1
 
 plt.show()
+
+
+
+### 4.7
+# Create lowpass butterworth filter at 3Hz https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.butter.html
+# filtr = signal.butter(10, 3, btype='lowpass', fs=1 / sample_interval, output='sos') # output='sos' ??
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
