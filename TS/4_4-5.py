@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import scipy.fftpack
-from scipy import signal
+from scipy.signal import butter, lfilter
 from scipy.stats import kurtosis
 
 ### Load all files
@@ -152,10 +152,12 @@ print("kurtosis", " ".join([("%0.4f" % val).ljust(20)                       for 
 # plt.show()
 # ##### End of Example #####
 
-plt.clf()
-samples = 1000 # 2	0 seconds, 50 samples per second
+samples = 1000 # 20 seconds, 50 samples per second
 offset = 100  # 2 seconds
 sample_interval = 2.56 / 128 # 2.56s/window and 128 samples/window gives an interval of 0.020s/sample
+sample_frequency = 1.0 / sample_interval
+
+plt.clf()
 iPlot = 1
 for activity, signal in activityToSignal.items():
 	# Grab the signal # Add offset to remove the apparent noise at the beginning of some signals
@@ -179,22 +181,110 @@ for activity, signal in activityToSignal.items():
 	plt.ylim(0, 0.3)
 	plt.legend()
 	iPlot += 1
-
+plt.tight_layout() 
+plt.suptitle("Signal")
 plt.show()
-
-
 
 ### 4.7
 # Create lowpass butterworth filter at 3Hz https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.butter.html
-# filtr = signal.butter(10, 3, btype='lowpass', fs=1 / sample_interval, output='sos') # output='sos' ??
+# Second argument : By default, fs is 2 half-cycles/sample, so these are normalized from 0 to 1, where 1 is the Nyquist frequency.
+# Nyquist frequency is half the sample_frequency -> 3Hz / (0.5*sample_frequency)
+num, denom = butter(5, 3.0 / (0.5 * sample_frequency), btype='lowpass')#, fs=1 / sample_interval, output='sos') # output='sos' ??
+
+plt.clf()
+iPlot = 1
+for activity, signal in activityToSignal.items():
+	# Grab the signal # Add offset to remove the apparent noise at the beginning of some signals
+	y = signal[offset:offset + samples]
+	y = lfilter(num, denom, y)
+	# Generate the x-values corresponding to the signal
+	x = np.linspace(offset * sample_interval, (offset + samples) * sample_interval, samples)
+
+	yf = scipy.fftpack.fft(y)
+	xf = np.linspace(0.0, 0.5 / sample_interval, samples // 2)
+
+	# Plot the signal
+	plt.subplot(6, 2, iPlot)
+	plt.plot(x, y, label=activity)
+	plt.ylim(-1, 1)
+	plt.legend()
+	iPlot += 1
+
+	# Plot the Fourier transform of the signal
+	plt.subplot(6, 2, iPlot)
+	plt.plot(xf, 2.0 / samples * np.abs(yf[0:(samples//2)]), label=activity + "(FFT)")
+	plt.ylim(0, 0.3)
+	plt.legend()
+	iPlot += 1
+plt.tight_layout()
+plt.suptitle("Lowpass : 3Hz")
+plt.show()
 
 
+### HIGHPASS FILTER
+num, denom = butter(5, 0.6 / (0.5 * sample_frequency), btype='highpass')#, fs=1 / sample_interval, output='sos') # output='sos' ??
+
+plt.clf()
+iPlot = 1
+for activity, signal in activityToSignal.items():
+	# Grab the signal # Add offset to remove the apparent noise at the beginning of some signals
+	y = signal[offset:offset + samples]
+	y = lfilter(num, denom, y)
+	# Generate the x-values corresponding to the signal
+	x = np.linspace(offset * sample_interval, (offset + samples) * sample_interval, samples)
+
+	yf = scipy.fftpack.fft(y)
+	xf = np.linspace(0.0, 0.5 / sample_interval, samples // 2)
+
+	# Plot the signal
+	plt.subplot(6, 2, iPlot)
+	plt.plot(x, y, label=activity)
+	plt.ylim(-1, 1)
+	plt.legend()
+	iPlot += 1
+
+	# Plot the Fourier transform of the signal
+	plt.subplot(6, 2, iPlot)
+	plt.plot(xf, 2.0 / samples * np.abs(yf[0:(samples//2)]), label=activity + "(FFT)")
+	plt.ylim(0, 0.3)
+	plt.legend()
+	iPlot += 1
+plt.tight_layout() 
+plt.suptitle("Highpass : 0.6Hz")
+plt.show()
 
 
+### BANDPASS FILTER
+num, denom = butter(5, [0.6 / (0.5 * sample_frequency), 3.0 / (0.5 * sample_frequency)], btype='band')#, fs=1 / sample_interval, output='sos') # output='sos' ??
 
+plt.clf()
+iPlot = 1
+for activity, signal in activityToSignal.items():
+	# Grab the signal # Add offset to remove the apparent noise at the beginning of some signals
+	y = signal[offset:offset + samples]
+	y = lfilter(num, denom, y)
+	# Generate the x-values corresponding to the signal
+	x = np.linspace(offset * sample_interval, (offset + samples) * sample_interval, samples)
 
+	yf = scipy.fftpack.fft(y)
+	xf = np.linspace(0.0, 0.5 / sample_interval, samples // 2)
 
+	# Plot the signal
+	plt.subplot(6, 2, iPlot)
+	plt.plot(x, y, label=activity)
+	plt.ylim(-1, 1)
+	plt.legend()
+	iPlot += 1
 
+	# Plot the Fourier transform of the signal
+	plt.subplot(6, 2, iPlot)
+	plt.plot(xf, 2.0 / samples * np.abs(yf[0:(samples//2)]), label=activity + "(FFT)")
+	plt.ylim(0, 0.3)
+	plt.legend()
+	iPlot += 1
+plt.tight_layout() 
+plt.suptitle("Bandpass : 0.6Hz, 3Hz")
+plt.show()
 
 
 
