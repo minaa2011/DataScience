@@ -76,7 +76,7 @@ class KnnDtw(object):
         # Create cost matrix via broadcasting with large int
         ts_a, ts_b = np.array(ts_a), np.array(ts_b)
         M, N = len(ts_a), len(ts_b)
-        cost = (2**31) * np.ones((M, N))
+        cost = 1e10 * np.ones((M, N))
 
         # Initialize the first row and column
         cost[0, 0] = d(ts_a[0], ts_b[0])
@@ -85,16 +85,19 @@ class KnnDtw(object):
 
         for j in range(1, N):
             cost[0, j] = cost[0, j-1] + d(ts_a[0], ts_b[j])
-
+   
         # Populate rest of cost matrix within window
         for i in range(1, M):
-            for j in range(max(1, i - self.max_warping_window),
-                            min(N, i + self.max_warping_window)):
+            for j in range(max(1, i - self.max_warping_window), min(N, i + self.max_warping_window)):
                 choices = cost[i - 1, j - 1], cost[i, j-1], cost[i-1, j]
                 cost[i, j] = min(choices) + d(ts_a[i], ts_b[j])
+                # print("i=%d j=%d cost=%0.4g" % (i, j, cost[i, j]))
+
+        # print("Cost matrix:")
+        # print(self._print_cost_matrix(cost))
 
         # Return DTW distance given window 
-        return cost[-1, -1]
+        return cost[-1, -1], cost
     
     def _dist_matrix(self, x, y):
         """Computes the M x N distance matrix between the training
@@ -121,7 +124,7 @@ class KnnDtw(object):
             x_s = np.shape(x)
             dm = np.zeros((x_s[0] * (x_s[0] - 1)) // 2, dtype=np.double)
             
-            p = ProgressBar(shape(dm)[0])
+            p = ProgressBar(np.shape(dm)[0])
             
             for i in range(0, x_s[0] - 1):
                 for j in range(i + 1, x_s[0]):
@@ -146,7 +149,7 @@ class KnnDtw(object):
         
             for i in range(0, x_s[0]):
                 for j in range(0, y_s[0]):
-                    dm[i, j] = self._dtw_distance(x[i, ::self.subsample_step],
+                    dm[i, j], _ = self._dtw_distance(x[i, ::self.subsample_step],
                                                   y[j, ::self.subsample_step])
                     # Update progress bar
                     dm_count += 1
@@ -154,6 +157,17 @@ class KnnDtw(object):
         
             return dm
         
+    def _print_cost_matrix(self, cost):
+        [i, j] = cost.shape
+        print("i=%d, j=%d" % (i, j))
+        cost[0][0] = 1
+        cost[0][1] = 1
+        for row in cost:
+            r = "  "
+            for c in row:
+                r += ("%.4g" % c).rjust(11)
+            print(r)
+
     def predict(self, x):
         """Predict the class labels or probability estimates for 
         the provided data
@@ -200,7 +214,7 @@ class ProgressBar:
             self.animate = self.animate_noipython
 
     def animate_ipython(self, iter):
-        print('\r', self)
+        print('\r', self, end="", flush=True)
         sys.stdout.flush()
         self.update_iteration(iter + 1)
 
@@ -282,26 +296,95 @@ y_train = np.array(y_train)
 x_test = np.array(x_test)
 y_test = np.array(y_test)
 
+def plotSignalAndDTW(s1, s2, x = None):
+    if x is None:
+        maxLen = max(len(s1), len(s2))
+        x = np.arange(0, maxLen, 1)
+    print(x[-1])
+
+    m = KnnDtw()
+    distance, cost = m._dtw_distance(s1, s2)
+
+    # Find shortest path
+    [M, N] = np.subtract(cost.shape, (1, 1)) # [Rows, Columns]
+    path = []
+    while M != 0 or N != 0:
+        costs = [cost[M-1, N-1], cost[M-1, N], cost[M, N-1]]
+        lowest = np.argmin(costs)
+        [M, N] = [[M-1, N-1], [M-1, N], [M, N-1]][lowest]
+        # print(costs, lowest, [M, N])
+        path.append([M, N])
+
+    path.reverse()
+
+    [p1, p2] = list(map(list, zip(*path)))
+
+    _p1 = list(zip(p1, s1[p1]))
+    _p2 = list(zip(p2, s2[p2]))
+    _p = list(zip(_p1, _p2))
+
+    plt.clf()
+    plt.plot(x, s1)
+    plt.plot(x, s2)
+    for point in _p:
+        [[x0, y0], [x1, y1]] = point
+        plt.plot([x0, x1], [y0, y1], color="black", linewidth=0.1)
+    plt.title("Distance: %0.4f" % distance)
+    plt.show()
+
+# Two signals
+# nsteps = 500
+# x = np.linspace(0, nsteps, num=nsteps +     1, dtype=np.int32)
+# y1 = np.sin(4 * np.pi * x / nsteps) + 1
+# y2 = np.cos(5 * np.pi * x / nsteps) 
+
+# plotSignalAndDTW(y1, y2)
+
+# plt.figure(figsize=(11,7))
+# colors = ['#D62728','#2C9F2C','#FD7F23','#1F77B4','#9467BD',
+#           '#8C564A','#7F7F7F','#1FBECF','#E377C2','#BCBD27']
+
+# for i, r in enumerate([0,27,65,100,145,172]):
+#     plt.subplot(3,2,i+1)
+#     plt.plot(x_train[r][:100], label=labels[y_train[r]], color=colors[i], linewidth=2)
+#     plt.xlabel('Samples @50Hz')
+#     plt.legend(loc='upper left')
+#     plt.tight_layout()
+# plt.show()
 
 
 
-plt.figure(figsize=(11,7))
-colors = ['#D62728','#2C9F2C','#FD7F23','#1F77B4','#9467BD',
-          '#8C564A','#7F7F7F','#1FBECF','#E377C2','#BCBD27']
-
-for i, r in enumerate([0,27,65,100,145,172]):
-    plt.subplot(3,2,i+1)
-    plt.plot(x_train[r][:100], label=labels[y_train[r]], color=colors[i], linewidth=2)
-    plt.xlabel('Samples @50Hz')
-    plt.legend(loc='upper left')
-    plt.tight_layout()
-plt.show()
-
-
-
+interval = 10
 
 m = KnnDtw(n_neighbors=1, max_warping_window=10)
-m.fit(x_train[::10], y_train[::10])
-label, proba = m.predict(x_test[::10])
+m.fit(x_train[::interval], y_train[::interval])
+label, proba = m.predict(x_test[::interval])
+print("\nPrediction done\n")
+
+#########################################################################################
+#########################################################################################
+from sklearn.metrics import classification_report, confusion_matrix
+print(classification_report(label, y_test[::interval], target_names=[l for l in labels.values()]))
+
+conf_mat = confusion_matrix(label, y_test[::interval])
+
+fig = plt.figure(figsize=(6,6))
+width = np.shape(conf_mat)[1]
+height = np.shape(conf_mat)[0]
+
+res = plt.imshow(np.array(conf_mat), cmap=plt.cm.summer, interpolation='nearest')
+for i, row in enumerate(conf_mat):
+    for j, c in enumerate(row):
+        if c>0:
+            plt.text(j-.2, i+.1, c, fontsize=16)
+            
+cb = fig.colorbar(res)
+plt.clf()
+plt.title('Confusion Matrix')
+_ = plt.xticks(range(6), [l for l in labels.values()], rotation=90)
+_ = plt.yticks(range(6), [l for l in labels.values()])
+plt.show()
 
 print("Script completed.")
+
+
