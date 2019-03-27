@@ -354,7 +354,7 @@ def plotSignalAndDTW(s1, s2, x = None):
 
 
 
-interval = 10
+interval = 5
 
 m = KnnDtw(n_neighbors=1, max_warping_window=10)
 m.fit(x_train[::interval], y_train[::interval])
@@ -388,3 +388,20 @@ plt.show()
 print("Script completed.")
 
 
+
+
+
+
+# [****************100%******************]  867890 of 867890 complete
+# Prediction done
+#
+#                     precision    recall  f1-score   support
+#
+#            WALKING       0.95      0.80      0.87       119
+#   WALKING UPSTAIRS       0.88      0.85      0.86        99
+# WALKING DOWNSTAIRS       0.69      0.92      0.79        64
+#            SITTING       0.77      0.86      0.81        88
+#           STANDING       0.93      0.80      0.86       122
+#             LAYING       0.93      1.00      0.97        98
+#
+#        avg / total       0.88      0.86      0.86       590
