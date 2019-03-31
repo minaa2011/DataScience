@@ -30,7 +30,7 @@ class KnnDtw(object):
         
     max_warping_window : int, optional (default = infinity)
         Maximum warping window allowed by the DTW dynamic
-        programming function
+        programming function 
             
     subsample_step : int, optional (default = 1)
         Step size for the timeseries array. By setting subsample_step = 2,
@@ -341,14 +341,15 @@ for country in countries:
 	xAxis = data['dt'].transform(lambda date : dateToInt(date))	# Transform datestring into a number
 	yAxis = data['AverageTemperature'].astype('float')			# Transform temperature to float
 	
-	xAxis = xAxis[1000:(1000 + 50 * 12)].values			# Get data for 50 years
-	yAxis = yAxis[1000:(1000 + 50 * 12)].values			# Get data for 50 years
+	xAxis = xAxis[1000:(1000 + 25 * 12)].values			# Get data for 25 years
+	yAxis = yAxis[1000:(1000 + 25 * 12)].values			# Get data for 25 years
 
-	yAxis -= yAxis.mean()				# Substract mean for DTW
-	dataPerCountry[country] = yAxis		# Store data of country in this map
-	plt.plot(yAxis, label=country)		# Plot the data
+	yAxis -= yAxis.mean()							# Substract mean for DTW
+	dataPerCountry[country] = yAxis					# Store data of country in this map
+	plt.plot(yAxis, label=country, linewidth=1.0)	# Plot the data
 
 plt.legend()
+plt.title("Temperature over 25 years (300 months)")
 plt.show()
 
 
