@@ -1,3 +1,5 @@
+from statsmodels.tsa.stattools import adfuller
+
 import sys
 import collections
 import itertools
@@ -372,6 +374,67 @@ for i1, c1 in enumerate(countries):
 		distance, cost = dtw._dtw_distance(s1, s2)
 		Row += str(int(distance)).ljust(10)
 	print(Row)
+
+
+
+###########################################
+########## B) Dickey Fuller Test ##########
+###########################################
+
+print('\nDickey-Fuller Test:')
+for country in countries:    
+    dftest = adfuller(dataPerCountry[country], autolag='AIC')
+    pvalue = dftest[1]
+    print(("  P-value for %s" % country).ljust(25), "%0.2f%%" % (pvalue * 100))
+    # dfoutput = pd.Series(dftest[0:4], index=['Test Statistic','p-value','#Lags Used','Number of Observations Used'])
+    # for key,value in dftest[4].items():
+    #     dfoutput['Critical Value (%s)'%key] = value
+    # print(dfoutput)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
