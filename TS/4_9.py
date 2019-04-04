@@ -1,4 +1,5 @@
 from statsmodels.tsa.stattools import adfuller
+from statsmodels.tsa.seasonal import seasonal_decompose
 
 import sys
 import collections
@@ -324,56 +325,72 @@ class ProgressBar:
 # temperatures per country
 tpc = pd.read_csv("../climate-change-earth-surface-temperature-data/GlobalLandTemperaturesByCountry.csv")
 
-countries = ["Norway", "Finland", "Singapore", "Cambodia"]
+### Decide where to start with the dates
+# wer = tpc[tpc['Country'] == "Singapore"].reset_index()                # Get data of country
+# print(wer.info())
+# isnull = wer[wer['AverageTemperature'].isnull()]
+# print(isnull[-5:])
+
+# plt.clf()
+# plt.plot(wer['AverageTemperature'])
+# plt.show()
+# exit()
+
 
 def dateToInt(date):
-	[year, month, _] = date.split("-")
-	return int(year) * 12 + int(month)
+    [year, month, _] = date.split("-")
+    return int(year) * 12 + int(month)
+
+countries = ["Norway", "Finland", "Singapore", "Cambodia"]
+dataPerCountry = {}
+startingDate = "1863-01-01"
+startingMonth = dateToInt(startingDate)
+nYears = 150
+print("startingMonth: %s" % startingMonth)
 
 plt.clf()
-
-dataPerCountry = {}
-
 for country in countries:
-	data = tpc[tpc['Country'] == country]				# Get data of country
-	data = data[['dt', 'AverageTemperature']]			# Drop unnecessary columns
-	data = data[data['AverageTemperature'].notnull()]	# Drop columns with NaN values
+    data = tpc[tpc['Country'] == country]                # Get data of country
+    data = data.reset_index()
+    data = data[['dt', 'AverageTemperature']]            # Drop unnecessary columns
+    data = data[data['AverageTemperature'].notnull()]    # Drop columns with NaN values
+    data['months'] = data['dt'].transform(lambda date : dateToInt(date))    # Transform datestring into a number
+    print("%s : %d rows, from %s to %s" % (country.rjust(10), data.count()[0], data.iloc[0]['dt'], data.iloc[-1]['dt']))
+    
+    index = data['months'].between(startingMonth, startingMonth + nYears * 12)   # Get data for x years, starting at 1863-01-01
+    yAxis = data[index] 
+    
+    yAxis = yAxis['AverageTemperature'].astype('float')            # Transform temperature to float
+    yAxis = yAxis.values
 
-	print("%s : %d rows" % (country.rjust(10), data.count()[0]))
-	xAxis = data['dt'].transform(lambda date : dateToInt(date))	# Transform datestring into a number
-	yAxis = data['AverageTemperature'].astype('float')			# Transform temperature to float
-	
-	xAxis = xAxis[1000:(1000 + 25 * 12)].values			# Get data for 25 years
-	yAxis = yAxis[1000:(1000 + 25 * 12)].values			# Get data for 25 years
-
-	yAxis -= yAxis.mean()							# Substract mean for DTW
-	dataPerCountry[country] = yAxis					# Store data of country in this map
-	plt.plot(yAxis, label=country, linewidth=1.0)	# Plot the data
+    # yAxis -= yAxis.mean()                            # Substract mean for DTW
+    dataPerCountry[country] = yAxis                  # Store data of country in this map
+    plt.plot(yAxis, label=country, linewidth=1.0)    # Plot the data
 
 plt.legend()
-plt.title("Temperature over 25 years (300 months)")
-plt.show()
+plt.title("Temperature over %d years (%d datapoints)" % (nYears, nYears * 12))
+# plt.show()
 
 
 #####################################
 ########## Print DTW table ##########
 #####################################
 
-dtw = KnnDtw()
-print("\n# Table with minimal DTW distance")
-HeaderRow = "DISTANCE ".ljust(10)
-for i1, c1 in enumerate(countries):
-	HeaderRow += c1.ljust(10)
-print(HeaderRow)
+# dtw = KnnDtw()
+# print("\n# Table with minimal DTW distance")
+# HeaderRow = "DISTANCE ".ljust(10)
+# for i1, c1 in enumerate(countries):
+#     HeaderRow += c1.ljust(10)
+# print(HeaderRow)
 
-for i1, c1 in enumerate(countries):
-	Row = (c1 + " ").rjust(10)
-	for i2, c2 in enumerate(countries):
-		s1 = dataPerCountry[c1]
-		s2 = dataPerCountry[c2]
-		distance, cost = dtw._dtw_distance(s1, s2)
-		Row += str(int(distance)).ljust(10)
-	print(Row)
+# for i1, c1 in enumerate(countries):
+#     Row = (c1 + " ").rjust(10)
+#     for i2, c2 in enumerate(countries):
+#         s1 = dataPerCountry[c1]
+#         s2 = dataPerCountry[c2]
+#         distance, cost = dtw._dtw_distance(s1, s2)
+#         Row += str(int(distance)).ljust(10)
+#     print(Row)
 
 
 
@@ -385,62 +402,52 @@ print('\nDickey-Fuller Test:')
 for country in countries:    
     dftest = adfuller(dataPerCountry[country], autolag='AIC')
     pvalue = dftest[1]
-    print(("  P-value for %s" % country).ljust(25), "%0.2f%%" % (pvalue * 100))
+    print(("  P-value for %s" % country).ljust(25), "%0.4f%%" % (pvalue * 100))
     # dfoutput = pd.Series(dftest[0:4], index=['Test Statistic','p-value','#Lags Used','Number of Observations Used'])
     # for key,value in dftest[4].items():
     #     dfoutput['Critical Value (%s)'%key] = value
     # print(dfoutput)
 
 
+###########################################
+########## B) Dickey Fuller Test ##########
+###########################################
+
+plt.clf()
+# for country in countries:
+for country in countries:
+    y1 = dataPerCountry[country]
+    y1 -= y1.mean()
+    y2 = [np.cbrt(y) for y in y1]
+    # plt.plot(y1, label="%s y1" % country)
+    plt.plot(y2, label="%s y2" % country)
+
+plt.legend()
+# plt.show()
 
 
+for country in countries:
+    print(country)
+    y1 = dataPerCountry[country]
+    decomposition = seasonal_decompose(y1, freq=900)
 
+    trend = decomposition.trend
+    seasonal = decomposition.seasonal
+    residual = decomposition.resid
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    plt.clf()
+    plt.subplot(411)
+    plt.plot(y1, label='Original')
+    plt.legend(loc='best')
+    plt.subplot(412)
+    plt.plot(trend, label='Trend')
+    plt.legend(loc='best')
+    plt.subplot(413)
+    plt.plot(seasonal,label='Seasonality')
+    plt.legend(loc='best')
+    plt.subplot(414)
+    plt.plot(residual, label='Residuals')
+    plt.legend(loc='best')
+    plt.tight_layout()
+    plt.show()
 
